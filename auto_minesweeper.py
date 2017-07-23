@@ -8,5 +8,5 @@
     # mss-3.0.1
     # Pillow-4.2.1
 
-# auto mine sweeping strategy
+# auto minesweeping strategy
 
