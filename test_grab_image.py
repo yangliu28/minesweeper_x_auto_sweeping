@@ -1,4 +1,4 @@
-# grab image for researching the game design
+# test program to grab the images for researching the game design
 
 import win32gui
 import mss
