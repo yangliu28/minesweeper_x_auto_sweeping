@@ -7,6 +7,7 @@
 # dependency: numpy-1.13.1+mkl, opencv-python
     # mss-3.0.1
     # Pillow-4.2.1
+    # win32api
 
 # Auto minesweeping strategy
 # It's not necessary to use information from the two number boards,
@@ -28,8 +29,9 @@ import win32gui
 import mss
 from PIL import Image
 from auto_minesweeper_functions import *
+import random
 
-# constants from measuring the game
+# define constants from measurements of the game
 gb_pos = (15, 101)  # relative coordinates of the game board in the game window
 gb_margin = 15  # game board margins at bottom corners, both left and right
 tile_size = 16  # number of pixels of a tile in x or y direction
@@ -56,5 +58,30 @@ face_pos = (w_size[0]/2-10, 64)
 face_click = (face_pos[0]+face_size/2, face_pos[1]+face_size/2)
 
 
+game_win = False  # only quit the program until a win
+while game_win == False:
+    # the start of a new game
+
+    # instantiate a variable for all states on the game board
+    board = [[-1 for j in range(gb_size[1])] for i in range(gb_size[0])]
+    # when indexing, first index is how many tiles from left, second is how many from top
+    # value explanation:
+        # '-1': untouched
+        # '0': empty
+        # '1~8': number 1~8
+        # '9': mine
+
+    # start with a random click on the top row, until a large area is discovered
+    # (this is a technique that has been used by the professional players)
+    # strategy is that if a number is opened, there is chance that the two tiles on left
+    # and right have mines, so avoid them too. If no such tile is available, then try
+    # on the ones adjacent to the opened numbers.
+    empty_found = False  # whether an empty tile has been found or not
+    list_1 = list(range(gb_size[0]))  # list with first priority
+    list_2 = []  # list with second priority
+    tile_temp = random.choice()
+
+    # If under very unlikely circumstance, all tiles on first row are opened and no empty
+    # tile is found, then just try the rest tiles, no furthur rules on where to click
 
 
