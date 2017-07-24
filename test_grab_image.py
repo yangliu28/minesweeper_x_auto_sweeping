@@ -7,19 +7,20 @@ import random  # generate random filename
 
 hwnd = win32gui.FindWindow(None, 'Minesweeper X')
 (left, top, right, bottom) = rect = win32gui.GetWindowRect(hwnd)
-img_pos = {'left': left+20+13*0,
-           'top': top+62,
-           'width': 13,
-           'height': 23}
+print(rect)
+img_pos = {'left': left+(right-left)/2-10,
+           'top': top+64,
+           'width': 20,
+           'height': 20}
 sct = mss.mss()
 sct_img = sct.grab(img_pos)  # get raw pixels from the screen
 # create the image
 img = Image.frombytes('RGBA', sct_img.size, bytes(sct_img.raw), 'raw', 'BGRA')
 img = img.convert('RGB')  # convert to RGB
-print(img.getpixel((1,2)))
+# print(img.getpixel((1,2)))
 
-# output = 'image-{}.png'.format(random.randint(0, 255))  # random number for filename
-# img.save(output)
+output = 'image-{}.png'.format(random.randint(0, 255))  # random number for filename
+img.save(output)
 
 
 
