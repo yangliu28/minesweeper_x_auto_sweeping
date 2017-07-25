@@ -61,7 +61,7 @@ img.save(output)
 # black: (0, 0, 0), mines, number 7
 # blue: (0, 0, 255), number 1
 # dark green: (0, 128, 0), number 2
-# red: (255, 255, 255), number 3, number board
+# red: (255, 0, 0), number 3, number board
 # dark blue: (0, 0, 128), number 4
 # dark red: (128, 0, 0), number 5, number board
 # cyan: (0, 128, 128), number 6
