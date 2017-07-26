@@ -42,7 +42,7 @@ face_click_pos = (face_pos[0]+face_size/2, face_pos[1]+face_size/2)
 # for screenshots
 sct = mss.mss()
 
-# get game board size, tiles in x and y directions
+# calculate game board size from window pixel size, number of tile in x and y directions
 def get_board_size():
     # make sure game board size can be calculated from the pixels
     if ((w_size[0]-gb_pos[0]-gb_margin)%tile_size != 0 or
@@ -153,5 +153,147 @@ def click_face():
     win32api.SetCursorPos(face_click_pos)
     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0)
     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0)
+
+# return a list of positions of the neighbor tiles
+def get_neighbors(tp, gb_size):
+    # input: tile pos and game board size
+    if tile_pos[0] > 0:
+        if tile_pos[0] < gb_size[0]-1:
+            if tile_pos[1] > 0:
+                if tile_pos[1] < gb_size[1]-1:
+                    # return all eight tiles around
+                    return [(tp[0]-1, tp[1]-1), (tp[0]-1, tp[1]), (tp[0]-1, tp[1]+1),
+                            (tp[0], tp[1]-1), (tp[0], tp[1]+1),
+                            (tp[0]+1, tp[1]-1), (tp[0]+1, tp[1]), (tp[0]+1, tp[1]+1)]
+                else:
+                    # on the bottom row, not corners
+                    return [(tp[0]-1, tp[1]-1), (tp[0]-1, tp[1]),
+                            (tp[0], tp[1]-1),
+                            (tp[0]+1, tp[1]-1), (tp[0]+1, tp[1])]
+            else:
+                # on the top row, not corners
+                return [(tp[0]-1, tp[1]), (tp[0]-1, tp[1]+1),
+                        (tp[0], tp[1]+1),
+                        (tp[0]+1, tp[1]), (tp[0]+1, tp[1]+1)]
+        else:
+            if tile_pos[1] > 0:
+                if tile_pos[1] < gb_size[1]-1:
+                    # on the right row, not corners
+                    return [(tp[0]-1, tp[1]-1), (tp[0]-1, tp[1]), (tp[0]-1, tp[1]+1),
+                            (tp[0], tp[1]-1), (tp[0], tp[1]+1)]
+                else:
+                    # on the right bottom corner
+                    return [(tp[0]-1, tp[1]-1), (tp[0]-1, tp[1]),
+                            (tp[0], tp[1]-1)]
+            else:
+                # on the right top corner
+                return [(tp[0]-1, tp[1]), (tp[0]-1, tp[1]+1),
+                        (tp[0], tp[1]+1)]
+    else:
+        if tile_pos[1] > 0:
+            if tile_pos[1] < gb_size[1]-1:
+                # on the left row, not corners
+                return [(tp[0], tp[1]-1), (tp[0], tp[1]+1),
+                        (tp[0]+1, tp[1]-1), (tp[0]+1, tp[1]), (tp[0]+1, tp[1]+1)]
+            else:
+                # on the left bottom corner
+                return [(tp[0], tp[1]-1),
+                        (tp[0]+1, tp[1]-1), (tp[0]+1, tp[1])]
+        else:
+            # on the left top corner
+            return [(tp[0], tp[1]+1),
+                    (tp[0]+1, tp[1]), (tp[0]+1, tp[1]+1)]
+
+# check if new number tile is qualified for the reasoning pool, and update rp
+def rp_check_new(gb, rp, gb_size, tile_pos):
+    if tile_pos in rp.keys(): return  # skip if it is already in the reasoning pool
+    rp_value = [[],[],[],[]]  # new value for the new entry in rp
+    for tile_pos_n in get_neighbors(tile_pos, gb_size):
+        if gb[tile_pos_n[0]][tile_pos_n[1]] == -1:
+            rp_value[0].append(tile_pos_n)  # add this neighbor to unknown tiles list
+        elif gb[tile_pos_n[0]][tile_pos_n[1]] == 0:
+            rp_value[1].append(tile_pos_n)  # add this neighbor to empty tiles list
+        elif (gb[tile_pos_n[0]][tile_pos_n[1]] >= 1 and
+              gb[tile_pos_n[0]][tile_pos_n[1]] <= 8):
+            rp_value[2].append(tile_pos_n)  # add this neighbor to number tiles list
+        else:  # tile_pos_n is a mine tile
+            rp_value[3].append(tile_pos_n)  # add this neighbor to mine tiles list
+    if len(rp_value[0]) > 0:
+        # this tile has unknown neighbors, qualified for the reasoning pool
+        rp[tile_pos] = rp_value
+
+# actions to be taken after opening a number tile
+def actions_on_number(gb, rp, gb_size, tile_pos, tile_status):
+    # gb and rp are mutables, changes will be reflected outside
+    # update this tile's status into gb variable
+    gb[tile_pos[0]][tile_pos[1]] = tile_status
+    # check if new number tile qualifies for reasoning pool
+    rp_check_new(gb, rp, gb_size, tile_pos)
+    # check disqualification in the reasoning pool, only check the adjacent tiles
+    for tile_pos_n in get_neighbors(tile_pos, gb_size):
+        if tile_pos_n in rp.keys():
+            # then it must be in the unknown list of tile_pos_n
+            rp[tile_pos_n][0].remove(tile_pos)
+            if len(rp[tile_pos_n][0]) == 0:
+                rp.pop(tile_pos_n)
+
+# actions to be taken after opening an empty tile
+def actions_on_empty(gb, rp, gb_size, tile_pos, tile_status):
+    # update this tile's status into gb variable
+    gb[tile_pos[0]][tile_pos[1]] = tile_status
+    # search adjacent for empty tiles, a connected empty area should be out there
+    empty_pool = [tile_pos]  # will search empty neighbors of all tiles in this pool
+    rp_temp = []  # temporary reasoning pool, will check qualification afterwards
+    while len(empty_pool) != 0:
+        # the following is for processing the neighbors of empty_pool[0]
+        # first remove it from dynamic empty tile pool
+        empty_pool.pop(0)  # pop out the first tile
+        for tile_pos_n in get_neighbors(empty_pool[0], gb_size):
+            if gb[tile_pos_n[0]][tile_pos_n[1]] == -1:
+                # only continue if tile has not been read yet
+                tile_status = read_tile(tile_pos_n)
+                gb[tile_pos_n[0]][tile_pos_n[1]] = tile_status  # update in gb variable
+                if tile_status == 0:
+                    # new empty tile found, add it to the dynamic pool
+                    empty_pool.append(tile_pos_n)
+                elif tile_status == -1 or tile_status == 9:
+                    # error here, the neighbor of an empty tile should not be untouched
+                    # tiles or mine tiles
+                    print("error in check neighbors of empty tiles - actions_on_empty()")
+                    sys.exit()
+                else:  # this neighbor is a number tile
+                    # put it in an accumulating list, rp_temp
+                    # will check later if it is qualified for the reasoning pool
+                    if tile_pos_n not in rp_temp:  # avoid duplication
+                        rp_temp.append(tile_pos_n)
+    # check and add new entries to the reasoning pool from rp_temp
+    for tile_pos_t in rp_temp:  # tile pos temp
+        rp_check_new(gb, rp, gb_size, tile_pos_t)
+    # check disqualification in the the reasoning pool
+    # since a new empty area is opened, it might be simple to just check all tiles in pool
+    for tile_pos_t in rp.keys():
+        for tile_pos_tn in rp[tile_pos_t][0]:  # tile pos temp neighbor
+            tile_status = gb[tile_pos_tn[0]][tile_pos_tn[1]]
+            if tile_status != -1:
+                # remove it first from the unknown tiles list
+                rp[tile_pos_t][0].remove(tile_pos_tn)
+                # relocate this tile to the right list
+                if tile_status == 0:
+                    # add it to the empty tiles list
+                    rp[tile_pos_t][1].append(tile_pos_tn)
+                elif tile_status >= 1 and tile_status <= 8:
+                    # add it to the number tiles list
+                    rp[tile_pos_t][2].append(tile_pos_tn)
+                else:
+                    # add it to the mine tiles list
+                    rp[tile_pos_t][3].append(tile_pos_tn)
+        # finish checking the unknown tiles list
+        if len(rp[tile_pos_t][0]) == 0:
+            rp.pop(tile_pos_t)
+
+# actions to be taken after locating a mine
+def actions_on_mine():
+    # update this tile's status into gb variable
+
 
 
