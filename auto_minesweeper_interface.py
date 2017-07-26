@@ -219,7 +219,7 @@ def rp_check_new(gb, rp, gb_size, tile_pos):
         else:  # tile_pos_n is a mine tile
             rp_value[3].append(tile_pos_n)  # add this neighbor to mine tiles list
     if len(rp_value[0]) > 0:
-        # this tile has unknown neighbors, qualified for the reasoning pool
+        # this tile has at least one unknown neighbors, qualified for the reasoning pool
         rp[tile_pos] = rp_value
 
 # actions to be taken after opening a number tile
@@ -292,8 +292,15 @@ def actions_on_empty(gb, rp, gb_size, tile_pos, tile_status):
             rp.pop(tile_pos_t)
 
 # actions to be taken after locating a mine
-def actions_on_mine():
+def actions_on_mine(gb, rp, gb_size, tile_pos, tile_status):
     # update this tile's status into gb variable
-
+    gb[tile_pos[0]][tile_pos[1]] = tile_status
+    # check disqualification in the reasoning pool, only check the adjacent tiles
+    for tile_pos_n in get_neighbors(tile_pos, gb_size):
+        if tile_pos_n in rp.keys():
+            # then it must be in the unknown list of tile_pos_n
+            rp[tile_pos_n][0].remove(tile_pos)
+            if len(rp[tile_pos_n][0]) == 0:
+                rp.pop(tile_pos_n)
 
 

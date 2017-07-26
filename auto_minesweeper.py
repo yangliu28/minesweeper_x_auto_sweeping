@@ -79,52 +79,19 @@ while not game_won:
     tile_pos = (tile_pos, 0)  # expand tile pos for the first row
     click_tile(tile_pos)  # click to open the tile
     # should always read the face first after opening a tile
-    # but no need here, because it is the first click
+    # but no need here, because it is always safe for the first click
     tile_status = read_tile(tile_pos)
-    gb[tile_pos[0]][tile_pos[1]] = tile_status  # update in the game board variable
+    # tile status can only be empty or numbers for the first click
     if tile_status > 0:
-        # number tile, update the reasoning pool
-        # first number tile, all neighbors should be unknown
-        rp[tile_pos] = [get_neighbors(tile_pos, gb_size), [], [], []]
+        actions_on_number(gb, rp, gb_size, tile_pos, tile_status)
     elif tile_status == 0:
-        # search adjacent empty tiles, a large empty area is discovered
-        empty_pool = [tile_pos]  # search empty neighbors of all tiles in this pool
-        rp_temp = []  # temporary reasoning pool, check qualification afterwards 
-        while len(empty_pool) != 0:
-            # the following has processed the neighbors of empty_pool[0]
-            # remove it from dynamic empty tile pool
-            empty_pool.pop(0)  # pop out the first tile
-            for tile_pos in get_neighbors(empty_pool[0], gb_size):  # use the first in pool
-                if gb[tile_pos[0]][tile_pos[1]] == -1:
-                    # only continue if tile has not been read yet
-                    tile_status = read_tile(tile_pos)
-                    gb[tile_pos[0]][tile_pos[1]] = tile_status  # update in game board variable
-                    if tile_status == 0:
-                        # new empty tile found, add it to the dynamic pool
-                        empty_pool.append(tile_pos)
-                    else:
-                        # put number tiles it in an accumulating list
-                        # to check later if it qualifies the reasoning pool
-                        # ideally all number tiles here are qualified because of first click
-                        if tile_pos not in rp_temp:  # avoid duplication
-                            rp_temp.append(tile_pos)
-        # check and add new entries to the reasoning pool from rp_temp
-        for tile_pos in rp_temp:
-            rp_value = [[],[],[],[]]  # dictionary value of rp variable
-            for tile_pos_n in get_neighbors(tile_pos, gb_size):  # stands for tile pos neighbor
-                if gb[tile_pos_n[0]][tile_pos_n[1]] == -1:
-                    rp_value[0].append(tile_pos_n)  # add this neighbor to unknown tiles list
-                elif gb[tile_pos_n[0]][tile_pos_n[1]] == 0:
-                    rp_value[1].append(tile_pos_n)  # add this neighbor to empty tiles list
-                elif (gb[tile_pos_n[0]][tile_pos_n[1]] >= 1 and
-                      gb[tile_pos_n[0]][tile_pos_n[1]] <= 8):
-                    rp_value[2].append(tile_pos_n)  # add this neighbor to number tiles list
-                else:  # tile_pos_n mine tile
-                    rp_value[3].append(tile_pos_n)  # add this neighbor to mine tiles list
-            if len(rp_value[0]) > 0:
-                # this tile has unknown neighbors, qualified for the reasoning pool
-                rp[tile_pos] = rp_value  # add new entry into reasoning pool
+        actions_on_empty(gb, rp, gb_size, tile_pos, tile_status)
+    else:
+        # should not be here, after clicking the tile should not be untouched
+        print("tile is still untouched ater clicking - random starting click")
+        sys.exit()
 
+    # the repeated loop implementing the reasoning strategy
     game_finished = False  # indicate if this round of game is done
     while not game_finished:
         # continuously reasoning until this game is finished(win or loose)
@@ -137,7 +104,7 @@ while not game_won:
         action_done = False  # flag indicating an action is done or not in this cycle
 
         # 2.basic strategy
-        # check one tile each time to find mines or safe tiles
+        # check each tile individually to locate mines or find safe tiles
         for tile_pos in rp.keys():
             tile_number = gb[tile_pos[0]][tile_pos[1]]
             if tile_number - len(rp[tile_pos][3]) == 0:
@@ -148,17 +115,17 @@ while not game_won:
                     face_status = read_face()
                     if face_status == -1: 
                         # loosing face, this should not happen if reasoning is correct
-                        print("step on a mine (2.basic strategy)")
+                        print("step on a mine - 2.basic strategy")
                         sys.exit()
                     elif face_status == 1:
                         # game has been won, exit the program
-                        print("game is won (2.basic strategy)")
+                        print("game is won - 2.basic strategy")
                         sys.exit()
                     else:
                         # smile face, game is good to continue
                         tile_status = read_tile(tp)
                         if tile_status > 0:
-                            
+
                 action_done = True
                 break  # exiting the reasoning pool check
             elif tile_number - len(rp[tile_pos][3]) == len(rp[tile_pos][0]):
@@ -171,7 +138,7 @@ while not game_won:
 
 
 
-# check disqualification in the reasoning pool after an action has been done
+
 
 
 
