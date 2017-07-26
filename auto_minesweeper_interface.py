@@ -1,8 +1,9 @@
 # functions for interfacing the operations like image grabing, mouse clicking
 
-import win32gui
+import win32gui, win32api, win32con
 import mss
 from PIL import Image
+import sys
 
 # constants from measurements of the game
 gb_pos = (15, 101)  # relative coordinates of the game board in the game window
@@ -47,11 +48,10 @@ def get_board_size():
     if ((w_size[0]-gb_pos[0]-gb_margin)%tile_size != 0 or
         (w_size[1]-gb_pos[1]-gb_margin)%tile_size != 0):
         print("game board size calculation from pixel size of the window failed")
-        return (0, 0)  # act as error
-    # calculate game board size, tiles in x and y directions
-    gb_size = ((w_size[0]-gb_pos[0]-gb_margin)/tile_size,
-               (w_size[1]-gb_pos[1]-gb_margin)/tile_size)    
-    return gb_size
+        sys.exit()
+    # calculate game board size of tiles in x and y directions, and return
+    return ((w_size[0]-gb_pos[0]-gb_margin)/tile_size,
+            (w_size[1]-gb_pos[1]-gb_margin)/tile_size)
 
 # read tile, from possibilities include numbers(1~8), empty, or untouched
 # there are other possibilities for the tile like flag, mine, red mine, or red cross mine
@@ -60,7 +60,6 @@ def get_board_size():
     # untouched tile: -1
     # empty tile: 0
     # number tile 1~8: 1~8
-    # error code: -2  (not likely)
 def read_tile(tile_pos):
     # convert tile pos in pixel positions
     tile_pixel_pos = {'left': w_pos[0] + gb_pos[0] + tile_size*tile_pos[0],
@@ -99,18 +98,19 @@ def read_tile(tile_pos):
             return 8
         else:
             # not likely to be here, not able to distinguish mines from numbers
-            return -2  # error code
+            print("read_tile() error, pixel_2 error")
+            sys.exit()
     elif pixel_1 == color_white:
         return -1  # untouched tile
     else:
-        return -2  # error code
+        print("read_tile() error, pixel_1 error")
+        sys.exit()
 
 # read the yellow face, whether smile face, loosing face, or winning face
 # return code:
     # loosing face: -1
     # smile face: 0
     # winning face: 1
-    # error code: -2  (not likely to happen)
 def read_face():
     # use same method from the read_tile() function for yellow face recognition
     sct_img = sct.grab(face_pixel_pos)
@@ -134,16 +134,24 @@ def read_face():
         elif pixel_2 == color_black:
             return 1  # winning face
         else:
-            return -2  # error code
+            print("read_face() error, pixel_2 error")
+            sys.exit()
     else:
-        return -2 # error code
+        print("read_face() error, pixel_1 error")
+        sys.exit()
 
 # click tile to open it
-def click_tile(tile_pos)
+def click_tile(tile_pos):
+    tile_click_pos = (w_pos[0] + gb_pos[0] + tile_size*tile_pos[0] + tile_size/2,
+                      w_pos[1] + gb_pos[1] + tile_size*tile_pos[1] + tile_size/2)
+    win32api.SetCursorPos(tile_click_pos)
+    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0)
+    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0)
 
 # click face to restart the game
-def click_face()
-
-
+def click_face():
+    win32api.SetCursorPos(face_click_pos)
+    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0)
+    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0)
 
 
