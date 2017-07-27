@@ -38,7 +38,8 @@ face_pixel_pos = {'left': w_pos[0] + face_pos[0],
                   'width': face_size,
                   'height': face_size}
 # the position of the middle of the face for clicking
-face_click_pos = (face_pos[0]+face_size/2, face_pos[1]+face_size/2)
+face_click_pos = (w_pos[0] + face_pos[0] + face_size/2,
+                  w_pos[1] + face_pos[1] + face_size/2)
 # for screenshots
 sct = mss.mss()
 
@@ -308,5 +309,21 @@ def actions_on_mine(gb, rp, gb_size, tile_pos):
                 rp.pop(tile_pos_n)
             else:
                 rp[tile_pos_n][2].append(tile_pos)  # add to number tiles list
+
+# for debugging, print out the game board 'gb' variable visually
+def debug_print_gb(gb, gb_size):
+    for j in range(gb_size[1]):  # row index
+        for i in range(gb_size[0]):  # column index
+            print "{0:3d}".format(gb[i][j]),  # 3 characters wide
+        print
+
+# for debugging, print out the reasoning pool 'rp' variable
+def debug_print_rp(rp):
+    for tile_pos in rp.keys():
+        print "{}:".format(tile_pos)
+        print "\t{}".format(rp[tile_pos][0])
+        print "\t{}".format(rp[tile_pos][1])
+        print "\t{}".format(rp[tile_pos][2])
+        print "\t{}".format(rp[tile_pos][3])
 
 

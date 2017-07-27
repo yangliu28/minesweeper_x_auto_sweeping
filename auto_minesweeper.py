@@ -120,6 +120,8 @@ while not game_won:
                     face_status = read_face()
                     if face_status == -1: 
                         # loosing face, this should not happen if reasoning is correct
+                        debug_print_gb(gb, gb_size)
+                        debug_print_rp(rp)
                         print("step on a mine - basic strategy failed")
                         sys.exit()
                     elif face_status == 1:
@@ -213,7 +215,9 @@ while not game_won:
                                 for tile_pos in tile_set:
                                     click_tile(tile_pos)
                                     face_status = read_face()
-                                    if face_status == -1: 
+                                    if face_status == -1:
+                                        debug_print_gb(gb, gb_size)
+                                        debug_print_rp(rp)
                                         print("step on a mine - advanced strategy failed")
                                         sys.exit()
                                     elif face_status == 1:
@@ -238,6 +242,8 @@ while not game_won:
                                 break
                     elif len(comm_decision) == 0:
                         # the two tiles contradict on the public tiles
+                        debug_print_gb(gb, gb_size)
+                        debug_print_rp(rp)
                         print("two adjacent tiles contradict on public tiles - advanced strategy")
                         sys.exit()
 
@@ -262,7 +268,8 @@ while not game_won:
                 face_status = read_face()
                 if face_status == -1:
                     print("step on a mine - guessing strategy")
-                    # should not exit while step on a mine here, it is a forgivable mistake
+                    # should not quit program, it is a forgivable mistake
+                    game_finished = True
                     break  # just break
                 elif face_status == 1:
                     print("game is won - guessing strategy")
@@ -277,6 +284,8 @@ while not game_won:
                         sys.exit()
             action_done = True  # reverse the flag, not necessary though
         else:
+            debug_print_gb(gb, gb_size)
+            debug_print_rp(rp)
             print("first tile is not satisfied with guessing conditions - guessing strategy")
             sys.exit()
 
