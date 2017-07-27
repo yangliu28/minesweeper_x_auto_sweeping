@@ -229,18 +229,22 @@ def actions_on_number(gb, rp, gb_size, tile_pos, tile_status):
     gb[tile_pos[0]][tile_pos[1]] = tile_status
     # check if new number tile qualifies for reasoning pool
     rp_check_new(gb, rp, gb_size, tile_pos)
-    # check disqualification in the reasoning pool, only check the adjacent tiles
+    # check disqualifications in the reasoning pool, only check the adjacent tiles
     for tile_pos_n in get_neighbors(tile_pos, gb_size):
         if tile_pos_n in rp.keys():
             # then it must be in the unknown list of tile_pos_n
             rp[tile_pos_n][0].remove(tile_pos)
             if len(rp[tile_pos_n][0]) == 0:
                 rp.pop(tile_pos_n)
+            else:
+                # tile_pos_n entry in reasoning pool is still valid
+                # put its neighbor tile_pos to where it is supposed to be
+                rp[tile_pos_n][2].append(tile_pos)  # add to number tiles list
 
 # actions to be taken after opening an empty tile
-def actions_on_empty(gb, rp, gb_size, tile_pos, tile_status):
+def actions_on_empty(gb, rp, gb_size, tile_pos):
     # update this tile's status into gb variable
-    gb[tile_pos[0]][tile_pos[1]] = tile_status
+    gb[tile_pos[0]][tile_pos[1]] = 0  # '0' is the status for empty tile
     # search adjacent for empty tiles, a connected empty area should be out there
     empty_pool = [tile_pos]  # will search empty neighbors of all tiles in this pool
     rp_temp = []  # temporary reasoning pool, will check qualification afterwards
@@ -269,7 +273,7 @@ def actions_on_empty(gb, rp, gb_size, tile_pos, tile_status):
     # check and add new entries to the reasoning pool from rp_temp
     for tile_pos_t in rp_temp:  # tile pos temp
         rp_check_new(gb, rp, gb_size, tile_pos_t)
-    # check disqualification in the the reasoning pool
+    # check disqualifications in the the reasoning pool
     # since a new empty area is opened, it might be simple to just check all tiles in pool
     for tile_pos_t in rp.keys():
         for tile_pos_tn in rp[tile_pos_t][0]:  # tile pos temp neighbor
@@ -292,15 +296,17 @@ def actions_on_empty(gb, rp, gb_size, tile_pos, tile_status):
             rp.pop(tile_pos_t)
 
 # actions to be taken after locating a mine
-def actions_on_mine(gb, rp, gb_size, tile_pos, tile_status):
+def actions_on_mine(gb, rp, gb_size, tile_pos):
     # update this tile's status into gb variable
-    gb[tile_pos[0]][tile_pos[1]] = tile_status
-    # check disqualification in the reasoning pool, only check the adjacent tiles
+    gb[tile_pos[0]][tile_pos[1]] = 9  # '9' is the status for mine tile
+    # check disqualifications in the reasoning pool, only check the adjacent tiles
     for tile_pos_n in get_neighbors(tile_pos, gb_size):
         if tile_pos_n in rp.keys():
             # then it must be in the unknown list of tile_pos_n
             rp[tile_pos_n][0].remove(tile_pos)
             if len(rp[tile_pos_n][0]) == 0:
                 rp.pop(tile_pos_n)
+            else:
+                rp[tile_pos_n][2].append(tile_pos)  # add to number tiles list
 
 

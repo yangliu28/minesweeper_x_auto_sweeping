@@ -85,10 +85,10 @@ while not game_won:
     if tile_status > 0:
         actions_on_number(gb, rp, gb_size, tile_pos, tile_status)
     elif tile_status == 0:
-        actions_on_empty(gb, rp, gb_size, tile_pos, tile_status)
+        actions_on_empty(gb, rp, gb_size, tile_pos)
     else:
         # should not be here, after clicking the tile should not be untouched
-        print("tile is still untouched ater clicking - random starting click")
+        print("tile is still untouched ater clicking - random click in start")
         sys.exit()
 
     # the repeated loop implementing the reasoning strategy
@@ -105,40 +105,146 @@ while not game_won:
 
         # 2.basic strategy
         # check each tile individually to locate mines or find safe tiles
+        # Searching for two basic situation here:
+        # Tile number subtracts mines number equals zero, then all unknowns are safe.
+        # Tile number subtracts mines number equals number of unknowns, then all
+        # unkowns are mines.
         for tile_pos in rp.keys():
             tile_number = gb[tile_pos[0]][tile_pos[1]]
             if tile_number - len(rp[tile_pos][3]) == 0:
                 # all unknowns are safe
                 safe_tiles = rp[tile_pos][0]  # list for all safe tiles
-                for tp in safe_tiles:
-                    click_tile(tp)  # open this tile
+                # can open multiple tiles at a time
+                for tile_pos_t in safe_tiles:  # stands for tile pos temp
+                    click_tile(tile_pos_t)  # open this tile
                     face_status = read_face()
                     if face_status == -1: 
                         # loosing face, this should not happen if reasoning is correct
-                        print("step on a mine - 2.basic strategy")
+                        print("step on a mine - basic strategy failed")
                         sys.exit()
                     elif face_status == 1:
                         # game has been won, exit the program
-                        print("game is won - 2.basic strategy")
+                        print("game is won - basic strategy")
                         sys.exit()
                     else:
                         # smile face, game is good to continue
-                        tile_status = read_tile(tp)
-                        if tile_status > 0:
-
-                action_done = True
-                break  # exiting the reasoning pool check
+                        tile_status = read_tile(tile_pos_t)
+                        if tile_status > 0:  # for number tile
+                            actions_on_number(gb, rp, gb_size, tile_pos_t, tile_status)
+                        elif tile_status == 0:  # for empty tile
+                            actions_on_empty(gb, rp, gb_size, tile_pos_t)
+                        else:  # tile is still untouched
+                            print("tile is still untouched after clicking - basic strategy")
+                            sys.exit()
+                action_done = True  # reverse the flag
+                break  # wait here to break so can have multiple tiles opened
             elif tile_number - len(rp[tile_pos][3]) == len(rp[tile_pos][0]):
                 # all unknowns are mines
-                action_done = True
-                break  # exiting the reasoning pool check
+                mine_tiles = rp[tile_pos][0]  # list for all mine tiles
+                for tile_pos_t in mine_tiles:
+                    actions_on_mine(gb, rp, gb_size, tile_pos_t)
+                action_done = True  # reverse the flag
+                break
 
         # skip the following strategies if an action is done
         if action_done: continue
 
+        # 3.advanced strategy
+        # check every pair of adjacent tiles to collectively decide mine or safe tiles
+        # In such pair, two tiles share several public unknown tiles, each also its own
+        # private unknown tiles. Each tile decides the possible number of tiles in the
+        # public unknown tiles, then there are two sets of decisions on number of tiles.
+        # If the intersection of the two sets contains only one decision, then this is the
+        # only possibility for the public unknow tiles.
+        rp_len = len(rp.keys())  # number of entries in reasoning pool
+        if rp_len > 1:  # there are at least two entries to form one pair
+            # find every combination of tiles
+            pairs = []
+            for i in range(rp_len):
+                for j in range(i+1, rp_len):
+                    tile_1_pos = rp.keys()[i]
+                    tile_2_pos = rp.keys()[j]
+                    # check if they are adjacent
+                    if (abs(tile_1_pos[0] - tile_2_pos[0]) <= 1 and
+                        abs(tile_1_pos[1] - tile_2_pos[1]) <= 1):
+                    pairs.append([i,j])
+            for pair in pairs:
+                tile_1_pos = rp.keys()[pair[0]]
+                tile_2_pos = rp.keys()[pair[1]]
+                # public unknown tiles share by tile_1 and tile_2
+                public_tiles = list(set(rp[tile_1_pos][0]) & set(rp[tile_2_pos][0]))
+                if len(public_tiles) > 0:  # they do share public unknown tiles
+                    # private unknown tiles owned by tile_1 and tile_2
+                    private_1_tiles = list(set(rp[tile_1_pos][0]) - set(rp[tile_2_pos][0]))
+                    private_2_tiles = list(set(rp[tile_2_pos][0]) - set(rp[tile_1_pos][0]))
+                    # number on the tiles
+                    number_1 = gb[tile_1_pos[0]][tile_1_pos[1]]
+                    number_2 = gb[tile_2_pos[0]][tile_2_pos[1]]
+                    # calculate possibilities of number of mines in public tiles
+                    # from tile_1's persective
+                    min_1 = max(0, number_1-len(private_1_tiles))
+                    max_1 = min(len(public_tiles), number_1)
+                    decision_1 = set(range(min_1, max_1+1))
+                    # from tile_2's persective
+                    min_2 = max(0, number_2-len(private_2_tiles))
+                    max_2 = min(len(public_tiles), number_2)
+                    decision_2 = set(range(min_2, max_2+1))
+                    # intersection of the two sets
+                    comm_decision = list(decision_1 & decision_2)
+                    if len(comm_decision) == 1:
+                        # there is only one possibility for public tiles
+                        # meaning only one possibility for the private tiles
+                        # Since following steps are similar for public tiles and two sets of
+                        # private tiles, put them in iterations to avoid repeated code.
+                        mine_nums = [comm_decision[0]]  # initialize with number of public mines
+                        tile_sets = [public_tiles]
+                        if len(private_1_tiles) > 0:
+                            mine_nums.append(number_1 - len(private_1_tiles))
+                            tile_sets.append(private_1_tiles)
+                        if len(private_2_tiles) > 0:
+                            mine_nums.append(number_1 - len(private_1_tiles))
+                            tile_sets.append(private_2_tiles)
+                        # start iteration
+                        for i in range(len(mine_nums)):
+                            mine_num = mine_nums[i]
+                            tile_set = tile_sets[i]
+                            if mine_num == 0:
+                                # all tiles are safe in tile_set
+                                for tile_pos in tile_set:
+                                    click_tile(tile_pos)
+                                    face_status = read_face()
+                                    if face_status == -1: 
+                                        print("step on a mine - advanced strategy failed")
+                                        sys.exit()
+                                    elif face_status == 1:
+                                        print("game is won - advanced strategy")
+                                        sys.exit()
+                                    else:
+                                        tile_status = read_tile(tile_pos)
+                                        if tile_status > 0:
+                                            actions_on_number(gb, rp, gb_size, tile_pos, tile_status)
+                                        elif tile_status == 0:
+                                            actions_on_empty(gb, rp, gb_size, tile_pos)
+                                        else:
+                                            print("tile is still untouched after clicking(public) - advanced strategy")
+                                            sys.exit()
+                                action_done = True  # reverse the flag
+                                break
+                            elif mine_num == len(tile_set):
+                                # all public tiles are mines
+                                for tile_pos in tile_set:
+                                    actions_on_mine(gb, rp, gb_size, tile_pos)
+                                action_done = True  # reverse the flag
+                                break
+                    elif len(comm_decision) == 0:
+                        # the two tiles contradict on the public tiles
+                        print("two adjacent tiles contradict on public tiles - advanced strategy")
+                        sys.exit()
 
+        # skip the following strategies if an action is done
+        if action_done: continue
 
-
-
+        # 4.guessing strategy (final resort)
+        # print each guesses
 
 
