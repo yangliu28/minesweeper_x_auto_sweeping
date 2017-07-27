@@ -35,7 +35,7 @@
 # remove untouched tile option from read_tile() function?
 
 
-from auto_minesweeper_functions import *
+from auto_minesweeper_interface import *
 import random, sys
 
 # get game board size, tiles on horizontal and vertical directions
@@ -47,7 +47,7 @@ if gb_size[0] < 1 or gb_size[1] < 1:
 
 game_won = False  # only quit the program until winning the game
 while not game_won:
-    click_face()  # start a new game
+    click_face()  # start a new game, always click even if a game is ready
 
     # instantiate a variable holding all states of tiles on the game board
     gb = [[-1 for j in range(gb_size[1])] for i in range(gb_size[0])]
@@ -167,7 +167,7 @@ while not game_won:
                     # check if they are adjacent
                     if (abs(tile_1_pos[0] - tile_2_pos[0]) <= 1 and
                         abs(tile_1_pos[1] - tile_2_pos[1]) <= 1):
-                    pairs.append([i,j])
+                        pairs.append([i,j])
             for pair in pairs:
                 tile_1_pos = rp.keys()[pair[0]]
                 tile_2_pos = rp.keys()[pair[1]]
@@ -226,7 +226,7 @@ while not game_won:
                                         elif tile_status == 0:
                                             actions_on_empty(gb, rp, gb_size, tile_pos)
                                         else:
-                                            print("tile is still untouched after clicking(public) - advanced strategy")
+                                            print("tile is still untouched after clicking - advanced strategy")
                                             sys.exit()
                                 action_done = True  # reverse the flag
                                 break
@@ -245,6 +245,39 @@ while not game_won:
         if action_done: continue
 
         # 4.guessing strategy (final resort)
-        # print each guesses
+        # no need to pick one tile in the middle of large untouched tiles
+        # still try guessing one from the reason pool, now using the first one
+        # Guessing the safe tiles instead of mine tiles, so that we can open the safe
+        # tiles instead of mark tile as mine, then we know immediately if guessing is correct.
+        tile_pos = rp.keys()[0]
+        tile_number = gb[tile_pos[0]][tile_pos[1]]  # the number on the tile
+        unknown_tiles = rp[tile_pos][0]
+        mine_left = tile_number - len(rp[tile_pos][3])  # number of mines left
+        if mine_left > 0 and mine_left < len(unknown_tiles):
+            # guessing conditions satisfied
+            safe_left = len(unknown_tiles) - mine_left  # safe tiles in the unknowns
+            safe_tiles = random.sample(unknown_tiles, safe_left)  # randomly choose the safe ones
+            for tile_pos_t in safe_tiles:
+                click_tile(tile_pos_t)
+                face_status = read_face()
+                if face_status == -1:
+                    print("step on a mine - guessing strategy")
+                    # should not exit while step on a mine here, it is a forgivable mistake
+                    break  # just break
+                elif face_status == 1:
+                    print("game is won - guessing strategy")
+                else:  # smile face, game is good to go
+                    tile_status = read_tile(tile_pos_t)
+                    if tile_status > 0:
+                        actions_on_number(gb, rp, gb_size, tile_pos_t, tile_status)
+                    elif tile_status == 0:
+                        actions_on_empty(gb, rp, gb_size, tile_pos_t)
+                    else:
+                        print("tile is still untouched after clicking - guessing strategy")
+                        sys.exit()
+            action_done = True  # reverse the flag, not necessary though
+        else:
+            print("first tile is not satisfied with guessing conditions - guessing strategy")
+            sys.exit()
 
 

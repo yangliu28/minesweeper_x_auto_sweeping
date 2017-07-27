@@ -154,55 +154,55 @@ def click_face():
     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0)
     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0)
 
-# return a list of positions of the neighbor tiles
-def get_neighbors(tp, gb_size):
+# return a tuple of positions of the neighbor tiles
+def get_neighbors(tp, gb_size):  # tp for tile pos
     # input: tile pos and game board size
-    if tile_pos[0] > 0:
-        if tile_pos[0] < gb_size[0]-1:
-            if tile_pos[1] > 0:
-                if tile_pos[1] < gb_size[1]-1:
+    if tp[0] > 0:
+        if tp[0] < gb_size[0]-1:
+            if tp[1] > 0:
+                if tp[1] < gb_size[1]-1:
                     # return all eight tiles around
-                    return [(tp[0]-1, tp[1]-1), (tp[0]-1, tp[1]), (tp[0]-1, tp[1]+1),
+                    return ((tp[0]-1, tp[1]-1), (tp[0]-1, tp[1]), (tp[0]-1, tp[1]+1),
                             (tp[0], tp[1]-1), (tp[0], tp[1]+1),
-                            (tp[0]+1, tp[1]-1), (tp[0]+1, tp[1]), (tp[0]+1, tp[1]+1)]
+                            (tp[0]+1, tp[1]-1), (tp[0]+1, tp[1]), (tp[0]+1, tp[1]+1))
                 else:
                     # on the bottom row, not corners
-                    return [(tp[0]-1, tp[1]-1), (tp[0]-1, tp[1]),
+                    return ((tp[0]-1, tp[1]-1), (tp[0]-1, tp[1]),
                             (tp[0], tp[1]-1),
-                            (tp[0]+1, tp[1]-1), (tp[0]+1, tp[1])]
+                            (tp[0]+1, tp[1]-1), (tp[0]+1, tp[1]))
             else:
                 # on the top row, not corners
-                return [(tp[0]-1, tp[1]), (tp[0]-1, tp[1]+1),
+                return ((tp[0]-1, tp[1]), (tp[0]-1, tp[1]+1),
                         (tp[0], tp[1]+1),
-                        (tp[0]+1, tp[1]), (tp[0]+1, tp[1]+1)]
+                        (tp[0]+1, tp[1]), (tp[0]+1, tp[1]+1))
         else:
-            if tile_pos[1] > 0:
-                if tile_pos[1] < gb_size[1]-1:
+            if tp[1] > 0:
+                if tp[1] < gb_size[1]-1:
                     # on the right row, not corners
-                    return [(tp[0]-1, tp[1]-1), (tp[0]-1, tp[1]), (tp[0]-1, tp[1]+1),
-                            (tp[0], tp[1]-1), (tp[0], tp[1]+1)]
+                    return ((tp[0]-1, tp[1]-1), (tp[0]-1, tp[1]), (tp[0]-1, tp[1]+1),
+                            (tp[0], tp[1]-1), (tp[0], tp[1]+1))
                 else:
                     # on the right bottom corner
-                    return [(tp[0]-1, tp[1]-1), (tp[0]-1, tp[1]),
-                            (tp[0], tp[1]-1)]
+                    return ((tp[0]-1, tp[1]-1), (tp[0]-1, tp[1]),
+                            (tp[0], tp[1]-1))
             else:
                 # on the right top corner
-                return [(tp[0]-1, tp[1]), (tp[0]-1, tp[1]+1),
-                        (tp[0], tp[1]+1)]
+                return ((tp[0]-1, tp[1]), (tp[0]-1, tp[1]+1),
+                        (tp[0], tp[1]+1))
     else:
-        if tile_pos[1] > 0:
-            if tile_pos[1] < gb_size[1]-1:
+        if tp[1] > 0:
+            if tp[1] < gb_size[1]-1:
                 # on the left row, not corners
-                return [(tp[0], tp[1]-1), (tp[0], tp[1]+1),
-                        (tp[0]+1, tp[1]-1), (tp[0]+1, tp[1]), (tp[0]+1, tp[1]+1)]
+                return ((tp[0], tp[1]-1), (tp[0], tp[1]+1),
+                        (tp[0]+1, tp[1]-1), (tp[0]+1, tp[1]), (tp[0]+1, tp[1]+1))
             else:
                 # on the left bottom corner
-                return [(tp[0], tp[1]-1),
-                        (tp[0]+1, tp[1]-1), (tp[0]+1, tp[1])]
+                return ((tp[0], tp[1]-1),
+                        (tp[0]+1, tp[1]-1), (tp[0]+1, tp[1]))
         else:
             # on the left top corner
-            return [(tp[0], tp[1]+1),
-                    (tp[0]+1, tp[1]), (tp[0]+1, tp[1]+1)]
+            return ((tp[0], tp[1]+1),
+                    (tp[0]+1, tp[1]), (tp[0]+1, tp[1]+1))
 
 # check if new number tile is qualified for the reasoning pool, and update rp
 def rp_check_new(gb, rp, gb_size, tile_pos):
@@ -250,8 +250,6 @@ def actions_on_empty(gb, rp, gb_size, tile_pos):
     rp_temp = []  # temporary reasoning pool, will check qualification afterwards
     while len(empty_pool) != 0:
         # the following is for processing the neighbors of empty_pool[0]
-        # first remove it from dynamic empty tile pool
-        empty_pool.pop(0)  # pop out the first tile
         for tile_pos_n in get_neighbors(empty_pool[0], gb_size):
             if gb[tile_pos_n[0]][tile_pos_n[1]] == -1:
                 # only continue if tile has not been read yet
@@ -270,6 +268,8 @@ def actions_on_empty(gb, rp, gb_size, tile_pos):
                     # will check later if it is qualified for the reasoning pool
                     if tile_pos_n not in rp_temp:  # avoid duplication
                         rp_temp.append(tile_pos_n)
+        # remove empty_pool[0] from dynamic empty tile pool
+        empty_pool.pop(0)  # pop out the first tile
     # check and add new entries to the reasoning pool from rp_temp
     for tile_pos_t in rp_temp:  # tile pos temp
         rp_check_new(gb, rp, gb_size, tile_pos_t)
