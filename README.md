@@ -11,5 +11,5 @@ Open the Minesweeper X application, make sure the game window is not covered by 
 ## benchmark
 The finishing time is pretty steady, 2 seconds for beginner, 5 seconds for intermediate, and 10 seconds for expert.
 
-![best times](/image templates/benchmark.png)
+![best times](/image\ templates/benchmark.png)
 
