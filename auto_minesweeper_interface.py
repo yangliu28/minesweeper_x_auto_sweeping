@@ -72,10 +72,10 @@ def read_tile(tile_pos):
                       'height': tile_size}
     # If read face happens to quickly in consecutive order, it might happen
     # that screenshots get the previous image of the tile, which is untouched.
-    # To avoid this, take another screenshot until it is not untouched.
+    # To avoid this, take another screenshot until it is the tiles we desire.
     pixel_1 = color_white  # first presume the screenshot gots wrong
     pixel_2 = ()
-    while pixel_1 == color_white:
+    while pixel_1 != color_dark_grey:
         # this loop will make sure we don't take screenshot of an untouched tile
         sct_img = sct.grab(tile_pixel_pos)  # grab the tile image
         # convert to RGB
@@ -86,33 +86,29 @@ def read_tile(tile_pos):
         # pixel_2 is at (9, 8), the eigen pixel for the number tiles
         pixel_1 = img.getpixel((0, 0))
         pixel_2 = img.getpixel((9, 8))
+    # now the pixel_1 is dark_grey, tile belongs the number tiles or empty tile
     # following is the process of tile "image recognition"
-    if pixel_1 == color_dark_grey:
-        # belongs to the number tiles and the empty tile
-        if pixel_2 == color_light_grey:
-            return 0  # empty tile
-        elif pixel_2 == color_blue:
-            return 1
-        elif pixel_2 == color_dark_green:
-            return 2
-        elif pixel_2 == color_red:
-            return 3
-        elif pixel_2 == color_dark_blue:
-            return 4
-        elif pixel_2 == color_dark_red:
-            return 5
-        elif pixel_2 == color_cyan:
-            return 6
-        elif pixel_2 == color_black:
-            return 7
-        elif pixel_2 == color_dark_grey:
-            return 8
-        else:
-            # not likely to be here, not able to distinguish mines from numbers
-            print("read_tile() error, pixel_2 error")
-            sys.exit()
+    if pixel_2 == color_light_grey:
+        return 0  # empty tile
+    elif pixel_2 == color_blue:
+        return 1
+    elif pixel_2 == color_dark_green:
+        return 2
+    elif pixel_2 == color_red:
+        return 3
+    elif pixel_2 == color_dark_blue:
+        return 4
+    elif pixel_2 == color_dark_red:
+        return 5
+    elif pixel_2 == color_cyan:
+        return 6
+    elif pixel_2 == color_black:
+        return 7
+    elif pixel_2 == color_dark_grey:
+        return 8
     else:
-        print("read_tile() error, pixel_1 error")
+        # not likely to be here, not able to distinguish mines from numbers
+        print("read_tile() error, pixel_2 error")
         sys.exit()
 
 # read the yellow face, whether smile face, loosing face, or winning face
