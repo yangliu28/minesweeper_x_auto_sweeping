@@ -27,6 +27,8 @@
 # if there are less than 8 tiles in x, the window size will still reflect 8 tiles.
 # Refer to the "game window minimum case.png" file under image templates folder.
 
+# strategies for human players
+# http://www.minesweeper.info/wiki/Strategy
 
 # The problem with pop up window when new record has been created:
 
@@ -46,8 +48,12 @@ if gb_size[0] < 1 or gb_size[1] < 1:
     sys.exit()
 
 game_won = False  # only quit the program until winning the game
+game_count = 0  # count how many games have been played to get a win
 while not game_won:
-    click_face()  # start a new game, always click even if a game is ready
+    game_count = game_count + 1
+    print "*************** new game {} ***************".format(game_count)
+    # start a new game, always click even if a game is ready
+    click_face()
 
     # instantiate a variable holding all states of tiles on the game board
     gb = [[-1 for j in range(gb_size[1])] for i in range(gb_size[0])]
@@ -86,10 +92,6 @@ while not game_won:
         actions_on_number(gb, rp, gb_size, tile_pos, tile_status)
     elif tile_status == 0:
         actions_on_empty(gb, rp, gb_size, tile_pos)
-    else:
-        # should not be here, after clicking the tile should not be untouched
-        print("tile is still untouched ater clicking - random click in start")
-        sys.exit()
 
     # the repeated loop implementing the reasoning strategy
     game_finished = False  # indicate if this round of game is done
@@ -122,7 +124,7 @@ while not game_won:
                         # loosing face, this should not happen if reasoning is correct
                         debug_print_gb(gb, gb_size)
                         debug_print_rp(rp)
-                        print("step on a mine - basic strategy failed")
+                        print("step on a mine - basic strategy")
                         sys.exit()
                     elif face_status == 1:
                         # game has been won, exit the program
@@ -135,9 +137,6 @@ while not game_won:
                             actions_on_number(gb, rp, gb_size, tile_pos_t, tile_status)
                         elif tile_status == 0:  # for empty tile
                             actions_on_empty(gb, rp, gb_size, tile_pos_t)
-                        else:  # tile is still untouched
-                            print("tile is still untouched after clicking - basic strategy")
-                            sys.exit()
                 action_done = True  # reverse the flag
                 break  # wait here to break so can have multiple tiles opened
             elif tile_number - len(rp[tile_pos][3]) == len(rp[tile_pos][0]):
@@ -152,14 +151,14 @@ while not game_won:
         if action_done: continue
 
         # 3.advanced strategy
-        # check every pair of adjacent tiles to collectively decide mine or safe tiles
-        # In such pair, two tiles share several public unknown tiles, each also its own
-        # private unknown tiles. Each tile decides the possible number of tiles in the
-        # public unknown tiles, then there are two sets of decisions on number of tiles.
+        # check every pair of adjacent tiles to collectively decide mines or safe tiles
+        # In such pair, two tiles share several public unknown tiles, each also has its
+        # own private unknown tiles. Each tile decides the possible number of mines in the
+        # public unknown tiles, then there are two sets of decisions on public tiles.
         # If the intersection of the two sets contains only one decision, then this is the
-        # only possibility for the public unknow tiles.
+        # only possibility for the public unknown tiles.
         rp_len = len(rp.keys())  # number of entries in reasoning pool
-        if rp_len > 1:  # there are at least two entries to form one pair
+        if rp_len > 1:  # there should be at least two entries to form minimum of one pair
             # find every combination of tiles
             pairs = []
             for i in range(rp_len):
@@ -169,7 +168,7 @@ while not game_won:
                     # check if they are adjacent
                     if (abs(tile_1_pos[0] - tile_2_pos[0]) <= 1 and
                         abs(tile_1_pos[1] - tile_2_pos[1]) <= 1):
-                        pairs.append([i,j])
+                        pairs.append((i,j))
             for pair in pairs:
                 tile_1_pos = rp.keys()[pair[0]]
                 tile_2_pos = rp.keys()[pair[1]]
@@ -194,6 +193,10 @@ while not game_won:
                     # intersection of the two sets
                     comm_decision = list(decision_1 & decision_2)
                     if len(comm_decision) == 1:
+                        print "the pair that reaches the decision {} and {}".format(tile_1_pos, tile_2_pos)
+                        print "public tiles {}".format(public_tiles)
+                        print "private tiles {} and {}".format(private_1_tiles, private_2_tiles)
+                        print "common decision for public tiles {}".format(comm_decision)
                         # there is only one possibility for public tiles
                         # meaning only one possibility for the private tiles
                         # Since following steps are similar for public tiles and two sets of
@@ -204,7 +207,7 @@ while not game_won:
                             mine_nums.append(number_1 - len(private_1_tiles))
                             tile_sets.append(private_1_tiles)
                         if len(private_2_tiles) > 0:
-                            mine_nums.append(number_1 - len(private_1_tiles))
+                            mine_nums.append(number_2 - len(private_2_tiles))
                             tile_sets.append(private_2_tiles)
                         # start iteration
                         for i in range(len(mine_nums)):
@@ -212,13 +215,14 @@ while not game_won:
                             tile_set = tile_sets[i]
                             if mine_num == 0:
                                 # all tiles are safe in tile_set
+                                print "actions: safe tiles are {}".format(tile_set)
                                 for tile_pos in tile_set:
                                     click_tile(tile_pos)
                                     face_status = read_face()
                                     if face_status == -1:
                                         debug_print_gb(gb, gb_size)
                                         debug_print_rp(rp)
-                                        print("step on a mine - advanced strategy failed")
+                                        print("step on a mine - advanced strategy")
                                         sys.exit()
                                     elif face_status == 1:
                                         print("game is won - advanced strategy")
@@ -229,13 +233,11 @@ while not game_won:
                                             actions_on_number(gb, rp, gb_size, tile_pos, tile_status)
                                         elif tile_status == 0:
                                             actions_on_empty(gb, rp, gb_size, tile_pos)
-                                        else:
-                                            print("tile is still untouched after clicking - advanced strategy")
-                                            sys.exit()
                                 action_done = True  # reverse the flag
                                 break
                             elif mine_num == len(tile_set):
                                 # all public tiles are mines
+                                print "actions: mine tiles are {}".format(tile_set)
                                 for tile_pos in tile_set:
                                     actions_on_mine(gb, rp, gb_size, tile_pos)
                                 action_done = True  # reverse the flag
@@ -244,6 +246,10 @@ while not game_won:
                         # the two tiles contradict on the public tiles
                         debug_print_gb(gb, gb_size)
                         debug_print_rp(rp)
+                        print "the pair that reaches the decision {} and {}".format(tile_1_pos, tile_2_pos)
+                        print "public tiles {}".format(public_tiles)
+                        print "private tiles {} and {}".format(private_1_tiles, private_2_tiles)
+                        print "common decision for public tiles {}".format(comm_decision)
                         print("two adjacent tiles contradict on public tiles - advanced strategy")
                         sys.exit()
 
@@ -252,9 +258,10 @@ while not game_won:
 
         # 4.guessing strategy (final resort)
         # no need to pick one tile in the middle of large untouched tiles
-        # still try guessing one from the reason pool, now using the first one
+        # still try guessing one entry from the reason pool, now using the first one
         # Guessing the safe tiles instead of mine tiles, so that we can open the safe
         # tiles instead of mark tile as mine, then we know immediately if guessing is correct.
+        # Only one tile is opened from this guess, so to keep risk to the minimum.
         tile_pos = rp.keys()[0]
         tile_number = gb[tile_pos[0]][tile_pos[1]]  # the number on the tile
         unknown_tiles = rp[tile_pos][0]
@@ -263,30 +270,31 @@ while not game_won:
             # guessing conditions satisfied
             safe_left = len(unknown_tiles) - mine_left  # safe tiles in the unknowns
             safe_tiles = random.sample(unknown_tiles, safe_left)  # randomly choose the safe ones
-            for tile_pos_t in safe_tiles:
-                click_tile(tile_pos_t)
-                face_status = read_face()
-                if face_status == -1:
-                    print("step on a mine - guessing strategy")
-                    # should not quit program, it is a forgivable mistake
-                    game_finished = True
-                    break  # just break
-                elif face_status == 1:
-                    print("game is won - guessing strategy")
-                else:  # smile face, game is good to go
-                    tile_status = read_tile(tile_pos_t)
-                    if tile_status > 0:
-                        actions_on_number(gb, rp, gb_size, tile_pos_t, tile_status)
-                    elif tile_status == 0:
-                        actions_on_empty(gb, rp, gb_size, tile_pos_t)
-                    else:
-                        print("tile is still untouched after clicking - guessing strategy")
-                        sys.exit()
+            # Used to open all the guessed safe tiles, but risk is too high, try one at a time
+            # In this case, the first one in safe_tiles is our guess.
+            guess_tile = safe_tiles[0]
+            print "guess the safe tile is {}".format(guess_tile)  # print out the guess
+            # try luck on the guess
+            click_tile(guess_tile)
+            face_status = read_face()
+            if face_status == -1:
+                print("step on a mine - guessing strategy")
+                # should not quit program, it is a forgivable mistake
+                game_finished = True
+                break  # just break
+            elif face_status == 1:
+                print("game is won - guessing strategy")
+            else:  # smile face, game is good to go
+                tile_status = read_tile(guess_tile)
+                if tile_status > 0:
+                    actions_on_number(gb, rp, gb_size, guess_tile, tile_status)
+                elif tile_status == 0:
+                    actions_on_empty(gb, rp, gb_size, guess_tile)
             action_done = True  # reverse the flag, not necessary though
         else:
             debug_print_gb(gb, gb_size)
             debug_print_rp(rp)
-            print("first tile is not satisfied with guessing conditions - guessing strategy")
+            print("tile is not satisfied with guessing conditions - guessing strategy")
             sys.exit()
 
 

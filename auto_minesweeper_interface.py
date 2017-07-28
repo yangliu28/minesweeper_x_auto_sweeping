@@ -16,6 +16,7 @@ color_white = (255, 255, 255)  # for some boundaries
 color_light_grey = (192, 192, 192)  # for most background
 color_dark_grey = (128, 128, 128)  # for some boundaries, number 8
 color_yellow = (255, 255, 0)  # for the yellow face
+color_dark_yellow = (128, 128, 0)  # for the yellow face
 color_black = (0, 0, 0)  # for the mines, number 7
 color_blue = (0, 0, 255)  # for number 1
 color_dark_green = (0, 128, 0)  # for number 2
@@ -54,11 +55,13 @@ def get_board_size():
     return ((w_size[0]-gb_pos[0]-gb_margin)/tile_size,
             (w_size[1]-gb_pos[1]-gb_margin)/tile_size)
 
-# read tile, from possibilities include numbers(1~8), empty, or untouched
-# there are other possibilities for the tile like flag, mine, red mine, or red cross mine
-# but used together with read_face(), the rest situations can be avoided
-# return code: (same as tile definition in 'board' variable)
-    # untouched tile: -1
+# read tile, from possibilities include numbers(1~8) and empty(0)
+# Untouched(-1) is removed from the return results option.
+# When this function is called, it is either right after a tile is clicked open,
+# or an empty area is discovered, in both case the tile should not be untouched.
+# There are other possibilities for the tile like untouched, flag, mine, red mine,
+# or error mine, but used together with read_face(), these cases can be avoided.
+# return code: (same as tile code in 'board' variable)
     # empty tile: 0
     # number tile 1~8: 1~8
 def read_tile(tile_pos):
@@ -67,15 +70,22 @@ def read_tile(tile_pos):
                       'top': w_pos[1] + gb_pos[1] + tile_size*tile_pos[1],
                       'width': tile_size,
                       'height': tile_size}
-    sct_img = sct.grab(tile_pixel_pos)  # grab the tile image
-    # convert to RGB
-    img = Image.frombytes('RGBA', sct_img.size, bytes(sct_img.raw), 'raw', 'BGRA')
-    img = img.convert('RGB')
-    # get the two important pixels for reading the tile statuses
-    # pixel_1 is at (0, 0), for distinguish untouch tile and rest
-    # pixel_2 is at (9, 8), the eigen pixel for the number tiles
-    pixel_1 = img.getpixel((0, 0))
-    pixel_2 = img.getpixel((9, 8))
+    # If read face happens to quickly in consecutive order, it might happen
+    # that screenshots get the previous image of the tile, which is untouched.
+    # To avoid this, take another screenshot until it is not untouched.
+    pixel_1 = color_white  # first presume the screenshot gots wrong
+    pixel_2 = ()
+    while pixel_1 == color_white:
+        # this loop will make sure we don't take screenshot of an untouched tile
+        sct_img = sct.grab(tile_pixel_pos)  # grab the tile image
+        # convert to RGB
+        img = Image.frombytes('RGBA', sct_img.size, bytes(sct_img.raw), 'raw', 'BGRA')
+        img = img.convert('RGB')
+        # get the two important pixels for reading the tile statuses
+        # pixel_1 is at (0, 0), for distinguish untouch tile and rest
+        # pixel_2 is at (9, 8), the eigen pixel for the number tiles
+        pixel_1 = img.getpixel((0, 0))
+        pixel_2 = img.getpixel((9, 8))
     # following is the process of tile "image recognition"
     if pixel_1 == color_dark_grey:
         # belongs to the number tiles and the empty tile
@@ -101,8 +111,6 @@ def read_tile(tile_pos):
             # not likely to be here, not able to distinguish mines from numbers
             print("read_tile() error, pixel_2 error")
             sys.exit()
-    elif pixel_1 == color_white:
-        return -1  # untouched tile
     else:
         print("read_tile() error, pixel_1 error")
         sys.exit()
@@ -112,21 +120,29 @@ def read_tile(tile_pos):
     # loosing face: -1
     # smile face: 0
     # winning face: 1
+# The surprised face is only there when left mouse key is pressed on a tile, face
+# will change as soon as left key is released.
+# Since surprised face does not indicate any result, it should not appear in the
+# result, if it is detected by mistake, just wait until it disappears.
 def read_face():
     # use same method from the read_tile() function for yellow face recognition
-    sct_img = sct.grab(face_pixel_pos)
-    # convert to RGB
-    img = Image.frombytes('RGBA', sct_img.size, bytes(sct_img.raw), 'raw', 'BGRA')
-    img = img.convert('RGB')
-    # get the two face eigen pixels for expression recognition
-    # pixel_1 is at (6, 8), pixel_2 is at (7, 8)
-    # colors for eigen pixels for different faces:
-        # smile face, yellow for (6, 8), black for (7, 8)
-        # loosing face, black for (6, 8), yellow for (7, 8)
-        # winning face, black for (6, 8), black for (7, 8)
-    pixel_1 = img.getpixel((6, 8))
-    pixel_2 = img.getpixel((7, 8))
-    # following is the process of face expression recognition
+    # the surprised face only stays in a very short time, to avoid getting this face
+    pixel_1 = color_dark_yellow  # presume get the surprised face
+    pixel_2 = ()
+    while pixel_1 == color_dark_yellow:
+        sct_img = sct.grab(face_pixel_pos)
+        img = Image.frombytes('RGBA', sct_img.size, bytes(sct_img.raw), 'raw', 'BGRA')
+        img = img.convert('RGB')  # convert to RGB
+        # get the two face eigen pixels for expression recognition
+        # pixel_1 is at (6, 8), pixel_2 is at (7, 8)
+        # colors for eigen pixels for different faces:
+            # smile face, yellow for (6, 8), black for (7, 8)
+            # loosing face, black for (6, 8), yellow for (7, 8)
+            # winning face, black for (6, 8), black for (7, 8)
+            # surprised face, dark yellow for (6, 8), black for (7, 8)
+        pixel_1 = img.getpixel((6, 8))
+        pixel_2 = img.getpixel((7, 8))
+    # following is the process of face recognition
     if pixel_1 == color_yellow:
         return 0  # smile face
     elif pixel_1 == color_black:
@@ -206,8 +222,8 @@ def get_neighbors(tp, gb_size):  # tp for tile pos
                     (tp[0]+1, tp[1]), (tp[0]+1, tp[1]+1))
 
 # check if new number tile is qualified for the reasoning pool, and update rp
-def rp_check_new(gb, rp, gb_size, tile_pos):
-    if tile_pos in rp.keys(): return  # skip if it is already in the reasoning pool
+# or update an old number tile's neighbor status
+def rp_check_valid(gb, rp, gb_size, tile_pos):
     rp_value = [[],[],[],[]]  # new value for the new entry in rp
     for tile_pos_n in get_neighbors(tile_pos, gb_size):
         if gb[tile_pos_n[0]][tile_pos_n[1]] == -1:
@@ -228,19 +244,35 @@ def actions_on_number(gb, rp, gb_size, tile_pos, tile_status):
     # gb and rp are mutables, changes will be reflected outside
     # update this tile's status into gb variable
     gb[tile_pos[0]][tile_pos[1]] = tile_status
-    # check if new number tile qualifies for reasoning pool
-    rp_check_new(gb, rp, gb_size, tile_pos)
+    # check if this new number tile qualifies for reasoning pool
+    rp_check_valid(gb, rp, gb_size, tile_pos)
     # check disqualifications in the reasoning pool, only check the adjacent tiles
     for tile_pos_n in get_neighbors(tile_pos, gb_size):
         if tile_pos_n in rp.keys():
             # then it must be in the unknown list of tile_pos_n
-            rp[tile_pos_n][0].remove(tile_pos)
-            if len(rp[tile_pos_n][0]) == 0:
-                rp.pop(tile_pos_n)
-            else:
-                # tile_pos_n entry in reasoning pool is still valid
-                # put its neighbor tile_pos to where it is supposed to be
-                rp[tile_pos_n][2].append(tile_pos)  # add to number tiles list
+
+            if tile_pos in rp[tile_pos_n][0]:
+                rp[tile_pos_n][0].remove(tile_pos)
+                if len(rp[tile_pos_n][0]) == 0:
+                    rp.pop(tile_pos_n)
+                else:
+                    # tile_pos_n entry in reasoning pool is still valid
+                    # put its neighbor tile_pos to where it is supposed to be
+                    rp[tile_pos_n][2].append(tile_pos)  # add to number tiles list
+            # try: rp[tile_pos_n][0].remove(tile_pos)
+            # except:
+            #     debug_print_gb(gb, gb_size)
+            #     debug_print_rp(rp)
+            #     print "tile_pos: {}".format(tile_pos)
+            #     print "tile_pos_n: {}".format(tile_pos_n)
+            #     print("index error - actions_on_number()")
+            #     sys.exit()
+            # if len(rp[tile_pos_n][0]) == 0:
+            #     rp.pop(tile_pos_n)
+            # else:
+            #     # tile_pos_n entry in reasoning pool is still valid
+            #     # put its neighbor tile_pos to where it is supposed to be
+            #     rp[tile_pos_n][2].append(tile_pos)  # add to number tiles list
 
 # actions to be taken after opening an empty tile
 def actions_on_empty(gb, rp, gb_size, tile_pos):
@@ -259,22 +291,19 @@ def actions_on_empty(gb, rp, gb_size, tile_pos):
                 if tile_status == 0:
                     # new empty tile found, add it to the dynamic pool
                     empty_pool.append(tile_pos_n)
-                elif tile_status == -1 or tile_status == 9:
-                    # error here, the neighbor of an empty tile should not be untouched
-                    # tiles or mine tiles
-                    print("error in check neighbors of empty tiles - actions_on_empty()")
-                    sys.exit()
                 else:  # this neighbor is a number tile
                     # put it in an accumulating list, rp_temp
                     # will check later if it is qualified for the reasoning pool
-                    if tile_pos_n not in rp_temp:  # avoid duplication
-                        rp_temp.append(tile_pos_n)
+                    if (tile_pos_n, tile_status) not in rp_temp:  # avoid duplication
+                        rp_temp.append((tile_pos_n, tile_status))
         # remove empty_pool[0] from dynamic empty tile pool
         empty_pool.pop(0)  # pop out the first tile
     # check and add new entries to the reasoning pool from rp_temp
-    for tile_pos_t in rp_temp:  # tile pos temp
-        rp_check_new(gb, rp, gb_size, tile_pos_t)
-    # check disqualifications in the the reasoning pool
+    for (tile_pos_t, tile_status) in rp_temp:  # tile pos temp
+        actions_on_number(gb, rp, gb_size, tile_pos_t, tile_status)
+        # this will reassign same tile status to the tile again
+        # this is so far the way to deal with updating multiple number tiles
+    # check disqualifications and state transition in the the reasoning pool
     # since a new empty area is opened, it might be simple to just check all tiles in pool
     for tile_pos_t in rp.keys():
         for tile_pos_tn in rp[tile_pos_t][0]:  # tile pos temp neighbor
@@ -303,12 +332,12 @@ def actions_on_mine(gb, rp, gb_size, tile_pos):
     # check disqualifications in the reasoning pool, only check the adjacent tiles
     for tile_pos_n in get_neighbors(tile_pos, gb_size):
         if tile_pos_n in rp.keys():
-            # then it must be in the unknown list of tile_pos_n
+            # then tile_pos must be in the unknown list of tile_pos_n
             rp[tile_pos_n][0].remove(tile_pos)
             if len(rp[tile_pos_n][0]) == 0:
                 rp.pop(tile_pos_n)
             else:
-                rp[tile_pos_n][2].append(tile_pos)  # add to number tiles list
+                rp[tile_pos_n][3].append(tile_pos)  # add to mine tiles list
 
 # for debugging, print out the game board 'gb' variable visually
 def debug_print_gb(gb, gb_size):
