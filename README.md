@@ -9,7 +9,7 @@ Open the Minesweeper X application, make sure the game window is not covered by 
 `python autominesweeper.py`
 
 ## benchmark
-The finishing time is pretty steady, 2 seconds for beginner, 5 seconds for intermediate, and 10 seconds for expert.
+The finishing time is pretty steady, 2 seconds for beginner, 5 seconds for intermediate, and 10 seconds for expert. The program hesitates a little when a large empty area is discovered, image capturing is the most time consuming part. Since it is a study for computerized minesweeping strategies, there is no extra intention to improve on that.
 
-![best times](/image\ templates/benchmark.png)
+![best times](image\ templates/benchmark.png)
 
