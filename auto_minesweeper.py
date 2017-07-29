@@ -25,9 +25,9 @@
 # lower limit of 8 tiles in horizontal direction so that the program can function well.
 # This program calculates the game board size from the pixel size of the window,
 # if there are less than 8 tiles in x, the window size will still reflect 8 tiles.
-# Refer to the "game window minimum case.png" file under image templates folder.
+# Refer to the "game window minimum case.png" file under images folder.
 
-# some strategies for human players
+# minesweeping strategies for human players
 # http://www.minesweeper.info/wiki/Strategy
 
 from auto_minesweeper_interface import *

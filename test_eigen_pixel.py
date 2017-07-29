@@ -1,6 +1,6 @@
 # test program to find the eigen pixels of different statuses of the tiles
 # for the use of image recognition with pixels
-# run this under the "image templates" folder to find out the common eigen pixels
+# run this under the "images" folder to find out the common eigen pixels
 
 from PIL import Image
 
